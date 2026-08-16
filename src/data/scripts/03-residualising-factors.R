@@ -54,7 +54,7 @@ prices_weak[, `:=`(
 prices_weak <- prices_weak[fundamentals, on=.(date, symbol)]
 prices_weak <- na.omit(prices_weak, by = c('vol', 'beta'))
 prices_weak[, month := ceiling_date(date, "months") - days(1)]
-prices_weak <- prices_weak[, .SD[.N], by = .(symbol, month)][, .(symbol, month, vol, beta, size)]
+prices_weak <- prices_weak[, .SD[.N], by = .(symbol, month)][, .(symbol, date = month, vol, beta, size)]
 
 #' save down monthly residual factors
 write_fst(prices_weak, here('src/data/clean/controls_m.fst'))
