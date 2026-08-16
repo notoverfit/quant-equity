@@ -1,4 +1,5 @@
 library(data.table)
+library(ggplot2)
 library(here)
 library(fst)
 
@@ -38,11 +39,11 @@ alpha_ic[, rolling_ic := frollmean(ic, 12)]
 raw_alpha <- ggplot(alpha_ic, aes(x = date)) +
   geom_col(aes(y = ic), alpha=0.15, width=8, linewidth=0) +
   geom_line(aes(y = rolling_ic), size=1) +
-  theme_minimal() +
+  theme_minimal(base_family = 'Courier New') +
   labs(x = '', y = 'IC') +
   scale_x_date(date_breaks="2 years", date_labels="%Y")
 
-ggsave(here('src/research/output/08-raw-alpha-ic.png'), raw_alpha)
+ggsave(here('src/research/output/08-raw-alpha-ic.png'), raw_alpha, width=10.5, height=5.33)
 
 mean(alpha_ic$ic) * sqrt(nrow(alpha_ic)) / sd(alpha_ic$ic)
 
@@ -68,11 +69,11 @@ p_alpha_ls <- ggplot(alpha_ls_raw, aes(x = date, y = cum)) +
     alpha = 0.15
   ) +
   geom_line() +
-  theme_minimal() +
+  theme_minimal(base_family='Courier New') +
   labs(x = "", y = "Growth of $1") +
   scale_x_date(date_breaks = "2 years", date_labels = "%Y")
 
-ggsave(here('src/research/output/09-alpha-ls.png'), p_alpha_ls)
+ggsave(here('src/research/output/09-alpha-ls.png'), p_alpha_ls, width=10.5, height=5.33)
 
 # residualise value vs momentum -------------------------------------------
 
