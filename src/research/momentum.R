@@ -49,7 +49,7 @@ mom_raw <- ggplot(mom_ic, aes(x = date, y = ic, color = factor, fill = factor)) 
   theme_minimal(base_size=13, base_family='Courier New') +
   facet_wrap(~horizon, ncol=1)
 
-ggsave(here('src/research/output/05-raw-mom-ic.png'), mom_raw)
+ggsave(here('src/research/output/05-raw-mom-ic.png'), mom_raw, width=10.5, height=5.33)
 
 print(mom_raw$tstat)
 
@@ -88,7 +88,7 @@ resid_mom <- ggplot(mom_ic, aes(x = date, y = ic, color = factor, fill = factor)
   theme_minimal(base_size=13, base_family='Courier New') +
   facet_wrap(~horizon, ncol=1)
 
-ggsave(here('src/research/output/06-resid-mom-ic.png'), resid_mom)
+ggsave(here('src/research/output/06-resid-mom-ic.png'), resid_mom, width=10.5, height=5.33)
 
 print(mom_residualised$tstat)
 
@@ -124,7 +124,7 @@ mom_ls <- ggplot(top_minus_bottom, aes(x = date, y = cum_return + 1)) +
   theme_minimal(base_family='Courier New', base_size=12) +
   labs(x = '', y = 'Growth of $1')
 
-ggsave(here('src/research/output/07-mom-top-minus-bottom.png'), mom_ls)
+ggsave(here('src/research/output/07-mom-top-minus-bottom.png'), mom_ls, width=10.5, height=5.33)
 
 # save down factor --------------------------------------------------------
 

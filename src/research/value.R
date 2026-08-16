@@ -50,7 +50,7 @@ ic_raw <- ggplot(result$ic, aes(x = date, y = ic, fill = factor, color = factor)
   facet_wrap(~horizon, ncol=1) +
   scale_x_date(date_breaks="4 years", date_labels="%Y")
 
-ggsave(here('src/research/output/01-ic-raw.png'), ic_raw)
+ggsave(here('src/research/output/01-ic-raw.png'), ic_raw, width=10.5, height=5.33)
 
 print(result$tstat)
 
@@ -62,7 +62,7 @@ ic_corr <- ggplot(corr_hist, aes(x = mean_corr)) +
   theme_minimal(base_size = 13, base_family='Courier New') +
   labs(x = 'Mean pairwise correlation', y='')
 
-ggsave(here('src/research/output/03-ic-corr.png'), ic_corr)
+ggsave(here('src/research/output/03-ic-corr.png'), ic_corr, width=10.5, height=5.33)
 
 # does controlling for sector or industry improve ic? ---------------------
 
@@ -177,7 +177,7 @@ ic_value <- ggplot(ic_1m, aes(x = date, y = ic)) +
   scale_x_date(date_breaks="2 years", date_labels="%Y") +
   theme_minimal(base_size=12, base_family="Courier New")
 
-ggsave(here('src/research/output/02-ic-value.png'), ic_value)
+ggsave(here('src/research/output/02-ic-value.png'), ic_value, width=10.5, height=5.33)
 
 value <- data_final[, .(date, symbol, value)]
 write_fst(value, here('src/data/clean/value_m.fst'))
@@ -199,4 +199,4 @@ top_minus_bottom_p <- ggplot(top_minus_bottom, aes(x = date, y = cum_return + 1)
   scale_y_continuous(breaks=seq(1, 10, by=1)) +
   labs(x = '', y='Growth of $1') 
 
-ggsave(here('src/research/output/04-top-minus-bottom.png'), top_minus_bottom_p)
+ggsave(here('src/research/output/04-top-minus-bottom.png'), top_minus_bottom_p, width=10.5, height=5.33)
