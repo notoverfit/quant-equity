@@ -29,6 +29,12 @@ setorder(fundamentals, date)
 prices[, month := ceiling_date(date, "months") - days(1)]
 fundamentals[, month := ceiling_date(date, "months") - days(1)]
 prices <- prices[symbol %in% constituents$symbol]
+
+# save down daily prices for risk model
+prices[, id := cumsum(fcoalesce(date - shift(date) > 7, FALSE)), by = symbol]
+prices[, return := closeadj / shift(closeadj) - 1, by = .(symbol, id)]
+write_fst(prices[date > '1999-06-30', .(symbol, date, closeadj, return)], here('src/data/clean/prices_d_RAW.fst'))
+
 fundamentals <- fundamentals[symbol %in% constituents$symbol]
 
 monthly_prices <- prices[, .SD[.N], by = .(symbol, month)][, .(date = month, symbol, close = closeadj, volume)]

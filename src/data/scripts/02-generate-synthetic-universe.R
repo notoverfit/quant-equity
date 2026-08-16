@@ -37,8 +37,15 @@ constituents[, weight := marketcap / sum(marketcap), by = date]
 start_date <- min(constituents$date)
 end_date <- max(constituents$date)
 
-month_ends <- seq(start_date, end_date, by = "month")
-month_ends <- data.table(date = ceiling_date(month_ends, "month") - days(1))
+month_ends <- data.table(
+  date = seq(
+    floor_date(start_date, "month"),
+    floor_date(end_date, "month"),
+    by = "month"
+  )
+)
+
+month_ends[, date := date %m+% months(1) - days(1)]
 month_ends[, rebal_year := year(date) - (month(date) < 6)]
 
 constituents[, rebal_year := year(date)]
