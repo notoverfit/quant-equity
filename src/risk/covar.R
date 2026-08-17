@@ -8,8 +8,7 @@ covar.mat <- function(return_dt, risk_dt, start_date, end_date, factors) {
     setdiff(c("date", factors), names(risk_dt))
   )
   
-  if (length(missing))
-    stop("Missing required columns: ", paste(unique(missing), collapse = ", "))
+  if (length(missing)) stop("Missing required columns: ", paste(unique(missing), collapse = ", "))
   
   # restrict to given estimation window
   returns <- return_dt[date >= start_date & date <= end_date]
@@ -20,7 +19,8 @@ covar.mat <- function(return_dt, risk_dt, start_date, end_date, factors) {
     risk[, factors, with = FALSE],
     use = "complete.obs"
   )
-  
+
+  # get beta estimates
   estimates <- data[, {
     X <- cbind(1, as.matrix(.SD))
     y <- return
@@ -46,16 +46,22 @@ covar.mat <- function(return_dt, risk_dt, start_date, end_date, factors) {
   
   estimates <- estimates[!is.na(resid_var)]
   
-  if (!nrow(estimates))
-    stop("No stocks had enough valid observations to estimate the risk model.")
+  if (!nrow(estimates)) stop("No stocks had enough valid observations to estimate the risk model.")
   
   # systematic + individual risk
   B <- do.call(rbind, estimates$beta)
   dimnames(B) <- list(estimates$symbol, factors)
   
-  D <- diag(estimates$resid_var)
+  # floor tiny/zero residual variances
+  var_floor <- 1e-8
+  resid_var <- pmax(estimates$resid_var, var_floor)
+  
+  D <- diag(resid_var)
   
   Sigma <- B %*% factor_cov %*% t(B) + D
+  
+  # remove tiny floating-point asymmetry
+  Sigma <- (Sigma + t(Sigma)) / 2
   dimnames(Sigma) <- list(estimates$symbol, estimates$symbol)
   
   Sigma
