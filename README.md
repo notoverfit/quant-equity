@@ -1,7 +1,9 @@
 # Value and Momentum in U.S. Equities
+```
+None of the work below is anything new and uses well-known and well-tested value and momentum factors - rather it is an educational project in developing cross-sectional quantitative equities strategies and portfolio optimisation.
 
-None of the work below is anything new and uses well-known and well-tested value and momentum factors - rather it is an educational project in developing cross-sectional quantitative equities strategies and portfolio optimisation. 
-
+The work below is entirely mine, reproducing the results of research papers I've read in the past. I do not guarantee the correctness of the data contained in src/data but provide it for the ability to run the notebooks.
+```
 ## Research note
 
 The work is informed by Asness, Moskowitz, and Pedersen, [*Value and Momentum Everywhere* (2013)](https://doi.org/10.1111/jofi.12021). The paper documents value and momentum premia across markets and finds that the two styles are negatively correlated. This repository applies the joint-style framework to a monthly U.S. equity universe; it is not a replication of the paper's multi-asset tests.
