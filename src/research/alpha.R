@@ -63,7 +63,7 @@ raw_alpha <- ggplot(alpha_ic, aes(x = date)) +
   labs(x = "", y = "IC") +
   scale_x_date(date_breaks = "2 years", date_labels = "%Y")
 
-ggsave(here('src/research/output/08-raw-alpha-ic.png'), raw_alpha, width=10.5, height=5.33)
+ggsave(here('src/research/output/08-alpha-ic.png'), raw_alpha, width=10.5, height=5.33)
 
 mean(alpha_ic$ic) * sqrt(nrow(alpha_ic)) / sd(alpha_ic$ic)
 
