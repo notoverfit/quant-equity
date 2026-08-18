@@ -68,7 +68,7 @@ Figure 6 repeats the IC analysis after the control regressions. It isolates the 
 
 ![Momentum top-minus-bottom](src/research/output/07-mom-top-minus-bottom.png)
 
-Figure 7 shows cumulative top-minus-bottom returns for the residualised momentum composite. The spread recovers after the 2009 drawdown and trends higher over the later sample, with meaningful variation along the way.
+Figure 7 shows cumulative top-minus-bottom returns for the residualised momentum composite. The spread recovers after the 2009 drawdown and trends higher over the later sample, with meaningful variation along the way. The momentum drawdown in 2008/2009 is a well-known phenomena in the industry.
 
 ### Combined alpha and portfolio
 
