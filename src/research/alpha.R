@@ -37,11 +37,19 @@ alpha_ic <- data[!is.na(return_1m) & !is.na(alpha), .(ic = cor(alpha, return_1m,
 alpha_ic[, rolling_ic := frollmean(ic, 12)]
 
 raw_alpha <- ggplot(alpha_ic, aes(x = date)) +
-  geom_col(aes(y = ic), alpha=0.15, width=8, linewidth=0) +
-  geom_line(aes(y = rolling_ic), size=1) +
-  theme_minimal(base_family = 'Courier New') +
-  labs(x = '', y = 'IC') +
-  scale_x_date(date_breaks="2 years", date_labels="%Y")
+  geom_col(
+    aes(y = ic, fill = ic > 0),
+    alpha = 0.15, width = 8, linewidth = 0
+  ) +
+  geom_line(aes(y = rolling_ic), linewidth = 1) +
+  scale_fill_manual(
+    values = c(`TRUE` = "green", `FALSE` = "red"),
+    guide = "none"
+  ) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  theme_minimal(base_family = "Courier New") +
+  labs(x = "", y = "IC") +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y")
 
 ggsave(here('src/research/output/08-raw-alpha-ic.png'), raw_alpha, width=10.5, height=5.33)
 
