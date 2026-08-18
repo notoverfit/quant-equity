@@ -11,7 +11,7 @@ All signals are evaluated against subsequent one- and three-month returns using 
 All regressions are cross-sectional OLS regressions run separately each month. For a value input $x_{i,t}$, first remove its sector mean:
 
 $$
-\tilde{x}_{i,t}=x_{i,t}-\operatorname{mean}\left(x_t\mid\text{sector of }i\right).
+\tilde{x}_{i,t}=x_{i,t}-\text{mean}\left(x_t\mid\text{sector of }i\right).
 $$
 
 For each value input, the monthly control regression is
