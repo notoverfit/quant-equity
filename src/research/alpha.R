@@ -38,14 +38,26 @@ alpha_ic[, rolling_ic := frollmean(ic, 12)]
 
 raw_alpha <- ggplot(alpha_ic, aes(x = date)) +
   geom_col(
-    aes(y = ic, fill = ic > 0),
+    aes(y = ic),
     alpha = 0.15, width = 8, linewidth = 0
   ) +
-  geom_line(aes(y = rolling_ic), linewidth = 1) +
-  scale_fill_manual(
-    values = c(`TRUE` = "green", `FALSE` = "red"),
-    guide = "none"
+  geom_ribbon(
+    aes(
+      ymin = 0,
+      ymax = pmax(rolling_ic, 0)
+    ),
+    fill = "green",
+    alpha = 0.15
   ) +
+  geom_ribbon(
+    aes(
+      ymin = pmin(rolling_ic, 0),
+      ymax = 0
+    ),
+    fill = "red",
+    alpha = 0.15
+  ) +
+  geom_line(aes(y = rolling_ic)) +
   geom_hline(yintercept = 0, linetype = "dashed") +
   theme_minimal(base_family = "Courier New") +
   labs(x = "", y = "IC") +

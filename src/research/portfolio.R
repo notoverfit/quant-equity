@@ -47,34 +47,26 @@ data[, `:=`(id = NULL)]
 rebalance_dates <- unique(data$date)
 
 factors <- c("mkt", "smb", "hml")
+
+# the below parameters were tweaked and configured but weren't grid searched
 lambda <- 25
 max_active <- 0.0015
+turnover_penalty <- 0.005
 
-portfolio_weights <- lapply(rebalance_dates, function(month) {
-  cat(glue("Optimising for {month}..."), "\n")  
+portfolio_weights <- vector("list", length(rebalance_dates))
+
+for (j in seq_along(rebalance_dates)) {
+  month <- rebalance_dates[j]
+  cat(glue("Optimising for {month}..."), "\n")
   
-  # rm has F, B and D
-  # F is the factor covariance matrix
-  # B is the betas of the stocks to the risk factors
-  # D is the idiosyncratic risk
-  rm <- factor.risk(
-    prices_daily, risk,
-    month %m-% months(3), month,
-    factors
-  )
-  
+  # rm contains the risk covariance matrix F, the betas to risk factors B and stock-specific variance D
+  rm <- factor.risk(prices_daily, risk, month %m-% months(3), month, factors)
   month_data <- data[date == month]
   
-  # stocks we can optimise
-  opt <- month_data[
-    symbol %in% rownames(rm$B) &
-      complete.cases(expected_return, beta, benchmark_weight)
-  ]
-  
-  # everything else is fixed at benchmark
+  opt <- month_data[symbol %in% rownames(rm$B) & complete.cases(expected_return, beta, benchmark_weight)]
   fixed <- month_data[!symbol %in% opt$symbol]
   
-  B <- rm$B[opt$symbol, , drop = FALSE]
+  B <- rm$B[opt$symbol, , drop=FALSE]
   D <- rm$D[opt$symbol]
   mu <- opt$expected_return
   beta <- opt$beta
@@ -83,51 +75,46 @@ portfolio_weights <- lapply(rebalance_dates, function(month) {
   N <- nrow(B)
   K <- ncol(B)
   
-  # need to exclude any benchmark weighted stocks
   weight_target <- 1 - sum(fixed$benchmark_weight)
   beta_target <- 1 - sum(fixed$benchmark_weight * fixed$beta)
   
-  # 1/2 t(x) %*% P %*% x + t(q) %*% x
-  # x is the weight, P is the covariance matrix, q is the expected return
-  # l is the lower bound and u is the upper bound
+  if (j == 1) {
+    prev_weight <- benchmark_weight
+  } else {
+    prev <- portfolio_weights[[j - 1]]
+    prev_weight <- prev$weight[match(opt$symbol, prev$symbol)]
+    prev_weight[is.na(prev_weight)] <- 0
+  }
+
   model <- osqp(
-    P = bdiag(
-      lambda * Diagonal(x = D),
-      lambda * Matrix(rm$F, sparse = TRUE)
-    ),
-    q = c(-mu, rep(0, K)),
+    P = bdiag(lambda * Diagonal(x=D), lambda * Matrix(rm$F, sparse=TRUE), Matrix(0, N, N, sparse=TRUE)),
+    # expected return, factor exposure and turnover penalty
+    q = c(-mu, rep(0, K), rep(turnover_penalty, N)),
     A = rbind(
-      cbind(Matrix(t(B), sparse = TRUE), -Diagonal(K)),
-      cbind(Matrix(1, 1, N, sparse = TRUE), Matrix(0, 1, K, sparse = TRUE)),
-      cbind(Matrix(beta, 1, N, sparse = TRUE), Matrix(0, 1, K, sparse = TRUE)),
-      cbind(Diagonal(N), Matrix(0, N, K, sparse = TRUE))
+      # constrain portfolio factor exposures for covariance t(B) %*% w  - z = 0
+      cbind(Matrix(t(B), sparse=TRUE), -Diagonal(K), Matrix(0, K, N, sparse=TRUE)),
+      # weight target t(1) %*% = weight_target
+      cbind(Matrix(1, 1, N, sparse=TRUE), Matrix(0, 1, K + N, sparse=TRUE)),
+      # beta target t(B) %*% w = beta_target
+      cbind(Matrix(beta, 1, N, sparse=TRUE), Matrix(0, 1, K + N, sparse=TRUE)),
+      # per-stock active exposure target
+      cbind(Diagonal(N), Matrix(0, N, K + N, sparse=TRUE)),
+      # diagonals to extract w + t and w - t, which constrain the turnover
+      cbind(Diagonal(N), Matrix(0, N, K, sparse=TRUE), -Diagonal(N)),
+      cbind(-Diagonal(N), Matrix(0, N, K, sparse=TRUE), -Diagonal(N))
     ),
-    l = c(
-      rep(0, K),
-      weight_target,
-      beta_target,
-      pmax(0, benchmark_weight - max_active)
-    ),
-    u = c(
-      rep(0, K),
-      weight_target,
-      beta_target,
-      benchmark_weight + max_active
-    ),
-    pars = osqpSettings(verbose = FALSE)
+    l = c(rep(0, K), weight_target, beta_target, pmax(0, benchmark_weight - max_active), rep(-Inf, 2 * N)),
+    u = c(rep(0, K), weight_target, beta_target, benchmark_weight + max_active, prev_weight, -prev_weight),
+    pars = osqpSettings(verbose=FALSE)
   )
   
-  solution <- data.table(
-    date = month,
-    symbol = opt$symbol,
-    weight = model$Solve()$x[seq_len(N)]
-  )
+  result <- model$Solve()
   
-  rbind(
-    solution,
-    fixed[, .(date = month, symbol, weight = benchmark_weight)]
+  portfolio_weights[[j]] <- rbind(
+    data.table(date=month, symbol=opt$symbol, weight=result$x[seq_len(N)]),
+    fixed[, .(date=month, symbol, weight=benchmark_weight)]
   )
-})
+}
 
 portfolio_weights <- rbindlist(portfolio_weights)
 portfolio_data <- data[portfolio_weights, on=.(date, symbol), nomatch=NULL]
@@ -153,18 +140,14 @@ portfolio_ls <- ggplot(portfolio_returns, aes(x = date, y = cum_return)) +
 
 ggsave(here('src/research/output/10-portfolio-ls.png'), portfolio_ls, width=10.5, height=5.33)
 
-# cumulative active returns
-portfolio_returns[, active_return := return - benchmark]
-portfolio_returns[, cum_active := cumprod(1 + active_return)]
-ggplot(portfolio_returns, aes(x = date, y = cum_active)) +
-  geom_line() +
-  labs(x = '', y = 'Growth of active $1') +
-  theme_minimal(base_family = 'Courier New')
-
 # rolling tracking return
 portfolio_returns[, rolling_te := frollsd(active_return * sqrt(12), 12)]
 portfolio_returns[, beta := frollapply(1:.N, 36, function(i) cov(return[i], benchmark[i]) / var(benchmark[i]))]
 portfolio_returns[, rolling_active := frollprod(1 + active_return, 12) - 1]
+portfolio_data[, prev_weight := shift(weight), by = symbol]
+turnover <- portfolio_data[, .(turnover = 0.5 * sum(abs(weight - prev_weight), na.rm = TRUE)), by = date]
+turnover[, rolling_turnover := frollmean(turnover, 12)]
+
 tracking_error <- ggplot(portfolio_returns[!is.na(rolling_te)], aes(x = date, y = rolling_te * 100)) +
   geom_line() +
   labs(x = '', y = 'Tracking error (%, rolling 12-month)') +
@@ -193,6 +176,13 @@ rolling_active <- ggplot(portfolio_returns[!is.na(rolling_active)], aes(x = date
   scale_x_date(date_breaks='2 years', date_labels='%Y') +
   theme_minimal(base_family = 'Courier New', base_size = 10)
 
-portfolio_attributes <- tracking_error / beta / rolling_active
+turnover_plot <- ggplot(turnover[turnover != 0], aes(x = date, y = rolling_turnover * 100)) +
+  geom_line() +
+  labs(x = '', y = 'One-way turnover (%)') +
+  scale_y_continuous(breaks=seq(0, 100, by = 1)) +
+  scale_x_date(date_breaks='2 years', date_labels='%Y') +
+  theme_minimal(base_family = 'Courier New', base_size = 10)
 
-ggsave(here('src/research/output/11-portfolio-attributes.png'), portfolio_attributes, width=10.5, height=10)
+portfolio_attributes <- tracking_error / beta / rolling_active / turnover_plot
+
+ggsave(here('src/research/output/11-portfolio-attributes.png'), portfolio_attributes, width=10.5, height=13)
