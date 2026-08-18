@@ -1,26 +1,30 @@
-covar.mat <- function(return_dt, risk_dt, start_date, end_date, factors) {
+factor.risk <- function(return_dt, risk_dt, start_date, end_date, factors) {
   start_date <- as.Date(start_date)
   end_date   <- as.Date(end_date)
   
-  # validate required columns exist
   missing <- c(
     setdiff(c("date", "symbol", "return"), names(return_dt)),
     setdiff(c("date", factors), names(risk_dt))
   )
   
-  if (length(missing)) stop("Missing required columns: ", paste(unique(missing), collapse = ", "))
+  if (length(missing)) {
+    stop("Missing required columns: ",
+         paste(unique(missing), collapse = ", "))
+  }
   
-  # restrict to given estimation window
+  # restrict estimation window
   returns <- return_dt[date >= start_date & date <= end_date]
   risk    <- risk_dt[date >= start_date & date <= end_date]
-  data    <- returns[risk, on = "date", nomatch = NULL]
   
-  factor_cov <- cov(
-    risk[, factors, with = FALSE],
+  data <- returns[risk, on = "date", nomatch = NULL]
+  
+  # factor covariance matrix
+  F <- cov(
+    risk[, ..factors],
     use = "complete.obs"
   )
-
-  # get beta estimates
+  
+  # estimate stock factor loadings + idiosyncratic variance
   estimates <- data[, {
     X <- cbind(1, as.matrix(.SD))
     y <- return
@@ -39,30 +43,52 @@ covar.mat <- function(return_dt, risk_dt, start_date, end_date, factors) {
       
       list(
         beta = list(fit$coefficients[-1]),
-        resid_var = sum(fit$residuals^2) / (length(y) - fit$rank)
+        resid_var = sum(fit$residuals^2) /
+          (length(y) - fit$rank)
       )
     }
   }, by = symbol, .SDcols = factors]
   
   estimates <- estimates[!is.na(resid_var)]
   
-  if (!nrow(estimates)) stop("No stocks had enough valid observations to estimate the risk model.")
+  if (!nrow(estimates)) {
+    stop("No stocks had enough valid observations.")
+  }
   
-  # systematic + individual risk
+  # B: N x K factor exposures
   B <- do.call(rbind, estimates$beta)
   dimnames(B) <- list(estimates$symbol, factors)
   
-  # floor tiny/zero residual variances
-  var_floor <- 1e-8
-  resid_var <- pmax(estimates$resid_var, var_floor)
+  # D is diagonal, so only store its diagonal
+  D <- pmax(estimates$resid_var, 1e-8)
+  names(D) <- estimates$symbol
   
-  D <- diag(resid_var)
+  list(
+    B = B,
+    F = F,
+    D = D
+  )
+}
+
+covar.mat <- function(return_dt, risk_dt, start_date, end_date, factors) {
   
-  Sigma <- B %*% factor_cov %*% t(B) + D
+  model <- factor.risk(
+    return_dt,
+    risk_dt,
+    start_date,
+    end_date,
+    factors
+  )
   
-  # remove tiny floating-point asymmetry
+  Sigma <- model$B %*% model$F %*% t(model$B) +
+    diag(model$D)
+  
   Sigma <- (Sigma + t(Sigma)) / 2
-  dimnames(Sigma) <- list(estimates$symbol, estimates$symbol)
+  
+  dimnames(Sigma) <- list(
+    rownames(model$B),
+    rownames(model$B)
+  )
   
   Sigma
 }
